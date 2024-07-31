@@ -1,13 +1,12 @@
 import asyncio
-import sys
-
+import sys, os
 import logging
-from aiogram import Bot, Dispatcher, types, Router
-
+from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.filters.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import Command, CommandStart
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, ReplyKeyboardRemove
+from PIL import Image
 
 
 
@@ -30,9 +29,9 @@ keyboard_markup = types.InlineKeyboardMarkup(
 )
 
 commands = {
-    '/start': lambda message: message.answer("Добро пожаловать в наш бот!", reply_markup=keyboard_markup),
+    '/start': lambda message: message.answer("Добро пожаловать в наш бот!", reply_markup=keyboard_markup),  # вывод кнопок добавлен
     '/help': lambda message: message.answer("Доступные команды: /start, /help, /echo, /photo"),
-    '/data': lambda message: message.answer(),  # команда просто не нужна
+    '/data': lambda message: message.answer(),  # команда просто не нужна попозже доделаю
     '/photo': lambda message: message.answer("Это информация о боте."),
 }
 
@@ -62,7 +61,7 @@ async def process_age(message: types.Message, state: FSMContext) -> None:
     await message.answer(f"Ты сказал, что тебе {message.text} лет. Приятно познакомиться, {name}!")
     await state.clear()
 
-@form_router.message()
+@form_router.message(F.text)
 async def cmd_handler(message: types.Message):  # Обработчик команд
     if message.text in commands:  # Обрабатываем команды из словаря
         await commands[message.text](message)
@@ -73,6 +72,25 @@ async def cmd_handler(message: types.Message):  # Обработчик кома�
         await message.answer("Команда не распознана. Используйте /help для списка доступных команд.")
 
 
+@form_router.message(F.photo)
+async def handle_photo(message: types.Message):
+    await message.answer("Вы отправили фотографию!")  # Отправка фотографии
+    # Получение информации о фото
+    file_id = message.photo[-1].file_id  # получаем файл самого большого размера
+    file = await bot.get_file(file_id)
+
+    # Скачивание файла
+    file_path = file.file_path
+    await bot.download_file(file_path, 'image.jpg')  # Сохраняем файл локально
+
+    # Открытие изображения и получение его размеров
+    with Image.open('image.jpg') as img:
+        width, height = img.size
+        await message.reply(f'Изображение загружено!\nШирина: {width} пикселей\nВысота: {height} пикселей')
+
+        # Опционально: удалить файл после обработки
+    os.remove('image.jpg')
+
 
 @dp.callback_query(
     lambda call: call.data in ['button1', 'button2'])  # Обработчик нажатий на кнопки
@@ -81,8 +99,6 @@ async def button_callback(call: types.CallbackQuery):
         await call.answer('Вы нажали кнопку 1!')  # Ответ на нажатие первой кнопки
     elif call.data == 'button2':
         await call.answer('Вы нажали кнопку 2!')  # Ответ на нажатие второй кнопки
-
-
 
 
 async def main():
