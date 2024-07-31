@@ -7,11 +7,32 @@ from aiogram.fsm.context import FSMContext
 from aiogram.filters import Command, CommandStart
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, ReplyKeyboardRemove
 from PIL import Image
+import aiosqlite
+import requests
 
 
 
+API_TOKEN = '7207885236:AAEAgGT7J3AP3xkf0H5IJx_LpiByNwH_cxk'  # токен телеграмма
+api_key = "1979e47aeb24421ea04152650243107"  # ключ погоды
 
-API_TOKEN = '7207885236:AAEAgGT7J3AP3xkf0H5IJx_LpiByNwH_cxk'
+
+# api_key = "1979e47aeb24421ea04152650243107"
+# city = "Moscow"
+#
+# url = f"http://api.weatherapi.com/v1/current.json?key={api_key}&q={city}"
+#
+# response = requests.get(url)
+#
+# if response.status_code == 200:
+#     data = response.json()
+#     print(f"Текущая погода в {data['location']['name']}, {data['location']['country']}:")
+#     print(f"Температура: {data['current']['temp_c']}°C")
+#     print(f"Ощущается как: {data['current']['feelslike_c']}°C")
+#     print(f"Влажность: {data['current']['humidity']}%")
+#     print(f"Скорость ветра: {data['current']['wind_kph']} км/ч")
+# else:
+#     print(f"Ошибка: {response.status_code}")
+
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
@@ -32,8 +53,31 @@ commands = {
     '/start': lambda message: message.answer("Добро пожаловать в наш бот!", reply_markup=keyboard_markup),  # вывод кнопок добавлен
     '/help': lambda message: message.answer("Доступные команды: /start, /help, /echo, /photo"),
     '/data': lambda message: message.answer(),  # команда просто не нужна попозже доделаю
-    '/photo': lambda message: message.answer("Это информация о боте."),
+    '/photo': lambda message: message.answer("По этой команде нет задания"),
 }
+
+
+async def db_start():
+    """Создает таблицу пользователей, если она не существует."""
+    async with aiosqlite.connect('users.db') as db:
+        await db.execute('''  
+            CREATE TABLE IF NOT EXISTS users (  
+                id INTEGER PRIMARY KEY,    
+                username TEXT,  
+                userage INTEGER
+            )  
+        ''')
+        await db.commit()
+
+async def add_user(user_id, username, userage):
+    """Добавляет пользователя в базу данных."""
+    async with aiosqlite.connect('users.db') as db:
+        await db.execute('''  
+            INSERT OR IGNORE INTO users (user_id, username, userage)  
+            VALUES (?, ?, ?, ?)  
+        ''', (user_id, username, userage))
+        await db.commit()
+
 
 class Form(StatesGroup):
     name = State()
@@ -57,7 +101,6 @@ async def process_name(message: types.Message, state: FSMContext) -> None:
 async def process_age(message: types.Message, state: FSMContext) -> None:
     user_data = await state.get_data()  # Получаем сохраненные данные
     name = user_data.get('name')
-
     await message.answer(f"Ты сказал, что тебе {message.text} лет. Приятно познакомиться, {name}!")
     await state.clear()
 
@@ -68,6 +111,13 @@ async def cmd_handler(message: types.Message):  # Обработчик кома�
     elif message.text.startswith('/echo '):  # отдельно для echo
         text = message.text.replace('/echo ', '')  # заменяем echo на пустое
         await message.answer(text)
+    elif message.text.startswith('/user'):
+        await message.answer("Команда вывода пользователя")
+    elif message.text.startswith('/weather'):
+        #await message.answer("В каком городе вы живете")
+        text = message.text.replace('/weather ', '')
+        await message.answer(f"Твой город {text}")
+
     else:
         await message.answer("Команда не распознана. Используйте /help для списка доступных команд.")
 
