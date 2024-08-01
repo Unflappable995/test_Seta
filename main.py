@@ -16,23 +16,6 @@ API_TOKEN = '7207885236:AAEAgGT7J3AP3xkf0H5IJx_LpiByNwH_cxk'  # токен те�
 api_key = "1979e47aeb24421ea04152650243107"  # ключ погоды
 
 
-# api_key = "1979e47aeb24421ea04152650243107"
-# city = "Moscow"
-#
-# url = f"http://api.weatherapi.com/v1/current.json?key={api_key}&q={city}"
-#
-# response = requests.get(url)
-#
-# if response.status_code == 200:
-#     data = response.json()
-#     print(f"Текущая погода в {data['location']['name']}, {data['location']['country']}:")
-#     print(f"Температура: {data['current']['temp_c']}°C")
-#     print(f"Ощущается как: {data['current']['feelslike_c']}°C")
-#     print(f"Влажность: {data['current']['humidity']}%")
-#     print(f"Скорость ветра: {data['current']['wind_kph']} км/ч")
-# else:
-#     print(f"Ошибка: {response.status_code}")
-
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
@@ -114,9 +97,20 @@ async def cmd_handler(message: types.Message):  # Обработчик кома�
     elif message.text.startswith('/user'):
         await message.answer("Команда вывода пользователя")
     elif message.text.startswith('/weather'):
-        #await message.answer("В каком городе вы живете")
         text = message.text.replace('/weather ', '')
         await message.answer(f"Твой город {text}")
+        url = f"http://api.weatherapi.com/v1/current.json?key={api_key}&q={text}"
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            await message.answer(f"Текущая погода в {data['location']['name']}, {data['location']['country']}:")
+            await message.answer(f"Температура: {data['current']['temp_c']}°C")
+            await message.answer(f"Ощущается как: {data['current']['feelslike_c']}°C")
+            await message.answer(f"Влажность: {data['current']['humidity']}%")
+            await message.answer(f"Скорость ветра: {data['current']['wind_kph']} км/ч")
+        else:
+            logging.info(f"Ошибка: {response.status_code}")
+
 
     else:
         await message.answer("Команда не распознана. Используйте /help для списка доступных команд.")
