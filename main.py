@@ -9,6 +9,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, R
 from PIL import Image
 import aiosqlite
 import requests
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 
 
@@ -21,6 +22,7 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 form_router = Router()
 dp.include_router(form_router)
+scheduler = AsyncIOScheduler() # создаем объект для работы с таймером
 
 # создаем кнопки
 keyboard_markup = types.InlineKeyboardMarkup(
@@ -45,21 +47,34 @@ async def db_start():
     async with aiosqlite.connect('users.db') as db:
         await db.execute('''  
             CREATE TABLE IF NOT EXISTS users (  
-                id INTEGER PRIMARY KEY AUTOINCREMENT,    
+                user_id INTEGER PRIMARY KEY,    
                 username TEXT,  
                 userage INTEGER
             )  
         ''')
         await db.commit()
 
-async def add_user(username, userage):
+async def add_user(user_id, username, userage):
     """Добавляет пользователя в базу данных."""
     async with aiosqlite.connect('users.db') as db:
         await db.execute('''  
-            INSERT OR IGNORE INTO users (username, userage)  
-            VALUES (?, ?)  
-        ''', (username, userage))
+            INSERT OR IGNORE INTO users (user_id, username, userage)  
+            VALUES (?, ?, ?)  
+        ''', (user_id, username, userage))
         await db.commit()
+
+@scheduler.scheduled_job('cron', hour=12, minute=16)
+async def scheduled_job():
+    print("Отправка по таймеру")
+    #await message.answer("Отправка по таймеру")
+    await send_message_to_users("Отправка по таймеру")
+
+async def send_message_to_users(message: str):
+    for user_id in user_id:
+        try:
+            await bot.send_message(user_id, message)
+        except Exception as e:
+            print(f"Не удалось отправить сообщение пользователю {user_id}: {e}")
 
 
 class Form(StatesGroup):
@@ -85,9 +100,10 @@ async def process_age(message: types.Message, state: FSMContext) -> None:
     user_data = await state.get_data()  # Получаем сохраненные данные
     name = user_data.get('name')
     await message.answer(f"Ты сказал, что тебе {message.text} лет. Приятно познакомиться, {name}!")
-    print(type(name))
-    print(type(message.text))
-    await add_user(str(name), int(message.text)) # Добавляем пользователя в базу данных
+    user_id = message.from_user.id  # Получаем id пользователя
+    # print(type(name))
+    # print(type(message.text))
+    await add_user(int(user_id), str(name), int(message.text)) # Добавляем пользователя в базу данных
     await state.clear()
 
 @form_router.message(F.text)
@@ -164,6 +180,7 @@ async def button_callback(call: types.CallbackQuery):
 
 async def main():
     await db_start() # Создание таблицы пользователей
+    scheduler.start() # Запуск таймера
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
