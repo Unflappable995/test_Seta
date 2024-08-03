@@ -10,6 +10,7 @@ from PIL import Image
 import aiosqlite
 import requests
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from datetime import datetime, timedelta
 
 
 
@@ -36,9 +37,9 @@ keyboard_markup = types.InlineKeyboardMarkup(
 
 commands = {
     '/start': lambda message: message.answer("Добро пожаловать в наш бот!", reply_markup=keyboard_markup),  # вывод кнопок добавлен
-    '/help': lambda message: message.answer("Доступные команды: /start, /help, /echo, /photo"),
+    '/help': lambda message: message.answer("Доступные команды: /start, /help, /echo, /photo")
     #'/data': lambda message: message.answer(),  # команда просто не нужна попозже доделаю
-    '/photo': lambda message: message.answer("По этой команде нет задания"),
+    #'/photo': lambda message: message.answer("По этой команде нет задания"),
 }
 
 
@@ -111,7 +112,7 @@ async def cmd_handler(message: types.Message):  # Обработчик кома�
     elif message.text.startswith('/echo '):  # отдельно для echo
         text = message.text.replace('/echo ', '')  # заменяем echo на пустое
         await message.answer(text)
-    elif message.text.startswith('/user'):
+    elif message.text.startswith('/users'):
         #await message.answer("Команда вывода пользователя")
         async with aiosqlite.connect('users.db') as db:
             async with db.execute('SELECT * FROM users') as cursor:
