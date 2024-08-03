@@ -45,20 +45,20 @@ async def db_start():
     async with aiosqlite.connect('users.db') as db:
         await db.execute('''  
             CREATE TABLE IF NOT EXISTS users (  
-                id INTEGER PRIMARY KEY,    
+                id INTEGER PRIMARY KEY AUTOINCREMENT,    
                 username TEXT,  
                 userage INTEGER
             )  
         ''')
         await db.commit()
 
-async def add_user(user_id, username, userage):
+async def add_user(username, userage):
     """Добавляет пользователя в базу данных."""
     async with aiosqlite.connect('users.db') as db:
         await db.execute('''  
-            INSERT OR IGNORE INTO users (user_id, username, userage)  
-            VALUES (?, ?, ?, ?)  
-        ''', (user_id, username, userage))
+            INSERT OR IGNORE INTO users (username, userage)  
+            VALUES (?, ?)  
+        ''', (username, userage))
         await db.commit()
 
 
@@ -85,6 +85,9 @@ async def process_age(message: types.Message, state: FSMContext) -> None:
     user_data = await state.get_data()  # Получаем сохраненные данные
     name = user_data.get('name')
     await message.answer(f"Ты сказал, что тебе {message.text} лет. Приятно познакомиться, {name}!")
+    print(type(name))
+    print(type(message.text))
+    await add_user(str(name), int(message.text)) # Добавляем пользователя в базу данных
     await state.clear()
 
 @form_router.message(F.text)
@@ -95,7 +98,21 @@ async def cmd_handler(message: types.Message):  # Обработчик кома�
         text = message.text.replace('/echo ', '')  # заменяем echo на пустое
         await message.answer(text)
     elif message.text.startswith('/user'):
-        await message.answer("Команда вывода пользователя")
+        #await message.answer("Команда вывода пользователя")
+        async with aiosqlite.connect('users.db') as db:
+            async with db.execute('SELECT * FROM users') as cursor:
+                users_list = []
+                async for row in cursor:
+                    # Форматируем строку для каждого пользователя и добавляем в список
+                    users_list.append(f"ID: {row[0]}, Username: {row[1]}, Age: {row[2]}")
+
+                    # Проверяем, есть ли пользователи в списке
+                if users_list:
+                    # Отправляем всех пользователей в одном сообщении
+                    await message.answer("\n".join(users_list))
+                else:
+                    await message.answer("Нет пользователей в базе данных.")
+
     elif message.text.startswith('/weather'):
         text = message.text.replace('/weather ', '')
         await message.answer(f"Твой город {text}")
@@ -146,6 +163,7 @@ async def button_callback(call: types.CallbackQuery):
 
 
 async def main():
+    await db_start() # Создание таблицы пользователей
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
