@@ -1,7 +1,7 @@
 import asyncio
 import sys, os
 import logging
-from aiogram import Bot, Dispatcher, types, Router, F
+from aiogram import Bot, Dispatcher, types, Router, F, BaseMiddleware
 from aiogram.filters.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import Command, CommandStart
@@ -11,6 +11,7 @@ import aiosqlite
 import requests
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime, timedelta
+
 
 
 
@@ -42,6 +43,33 @@ commands = {
     #'/photo': lambda message: message.answer("По этой команде нет задания"),
 }
 
+class ContextDataMiddleware(BaseMiddleware):
+    async def __call__(self, handler, event, data):
+        # Добавляем дополнительную информацию в data
+        data['custom_data'] = 'Some value'
+        return await handler(event, data)
+
+dp.middleware.setup(ContextDataMiddleware())
+
+class AdminCheckMiddleware(BaseMiddleware):
+    async def __call__(self, handler, event, data):
+        if isinstance(event, types.Message):
+            user_id = event.from_user.id
+            # Здесь можно добавить логику для извлечения списка администраторов
+            if user_id not in [123456789]:  # Замените на ID администраторов
+                await event.reply("Access denied.")
+                return  # Остановить обработку
+        return await handler(event, data)
+
+dp.middleware.setup(AdminCheckMiddleware())
+
+class LoggingMiddleware(BaseMiddleware):
+    async def __call__(self, handler, event, data):
+        # Логируем входящее сообщение
+        logging.info(f"Received message: {event.text}")
+        return await handler(event, data)
+
+dp.middleware.setup(LoggingMiddleware())
 
 async def db_start():
     """Создает таблицу пользователей, если она не существует."""
