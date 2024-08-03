@@ -37,7 +37,7 @@ keyboard_markup = types.InlineKeyboardMarkup(
 commands = {
     '/start': lambda message: message.answer("Добро пожаловать в наш бот!", reply_markup=keyboard_markup),  # вывод кнопок добавлен
     '/help': lambda message: message.answer("Доступные команды: /start, /help, /echo, /photo"),
-    '/data': lambda message: message.answer(),  # команда просто не нужна попозже доделаю
+    #'/data': lambda message: message.answer(),  # команда просто не нужна попозже доделаю
     '/photo': lambda message: message.answer("По этой команде нет задания"),
 }
 
@@ -63,18 +63,16 @@ async def add_user(user_id, username, userage):
         ''', (user_id, username, userage))
         await db.commit()
 
-@scheduler.scheduled_job('cron', hour=12, minute=16)
+@scheduler.scheduled_job('cron', hour=9, minute=0)
 async def scheduled_job():
-    print("Отправка по таймеру")
-    #await message.answer("Отправка по таймеру")
-    await send_message_to_users("Отправка по таймеру")
+    await send_message_to_users()
 
-async def send_message_to_users(message: str):
-    for user_id in user_id:
-        try:
-            await bot.send_message(user_id, message)
-        except Exception as e:
-            print(f"Не удалось отправить сообщение пользователю {user_id}: {e}")
+async def send_message_to_users():
+    async with aiosqlite.connect('users.db') as db:
+        async with db.execute('SELECT * FROM users') as cursor:
+            async for row in cursor:
+                await bot.send_message(row[0],f"Здраствуй {row[1]}, Не забудь проверить уведомления!")
+
 
 
 class Form(StatesGroup):
